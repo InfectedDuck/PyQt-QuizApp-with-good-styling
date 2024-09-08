@@ -1,7 +1,8 @@
 import sys
 import pygame
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QRadioButton, QPushButton, QVBoxLayout, QWidget, \
-    QTabWidget
+    QTabWidget, QDialog, QFormLayout, QLineEdit, QDialogButtonBox, QMessageBox
+from questions import modify_questions, create_question
 
 
 class Quiz(QMainWindow):
@@ -168,38 +169,15 @@ class Quiz(QMainWindow):
             }
             QLabel#Result_Label {
                 font-size: 24px;
-                color: #007BFF;
-                margin-top: 20px;
-            }
-            QLabel#Question_Label {
-                font-size: 20px;
-                color: #444444;
-                margin-top: 20px;
-            }
-            QPushButton#Submit_Button {
-                font-size: 18px;
-                color: #FFFFFF;
-                background-color: #007BFF;
-                border: 2px solid #007BFF;
-                border-radius: 5px;
-                padding: 10px 20px;
-                margin-top: 30px;
-                transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
-            }
-            QPushButton#Submit_Button:hover {
-                background-color: #0056b3;
-                border-color: #0056b3;
-            }
-            QPushButton#Submit_Button:pressed {
-                background-color: #004080;
-                border-color: #004080;
+                color: #333333;
+                margin: 20px;
             }
         """)
 
     def initUI(self):
         # Set up the main window
         self.setWindowTitle("Quiz Program")
-        self.setGeometry(100, 100, 400, 300)
+        self.setGeometry(100, 100, 500, 400)
 
         # Set up the tab widget to hold questions and results
         self.tab_widget = QTabWidget()
@@ -207,76 +185,91 @@ class Quiz(QMainWindow):
 
         # Add tabs for each question
         for i, question in enumerate(self.questions):
-            question_tab = QWidget()
-            layout = QVBoxLayout()
+            self.add_question_tab(i)
 
-            # Add the question label
-            question_label = QLabel(question["question"])
-            layout.addWidget(question_label)
+        # Add Modify and Create New buttons
+        modify_button = QPushButton("Modify Questions")
+        modify_button.clicked.connect(self.modify_questions)
+        create_button = QPushButton("Create New Question")
+        create_button.clicked.connect(self.create_question)
 
-            # Add radio buttons for options
-            options = []  # List to store radio buttons for the current question
-            for option in question["options"]:
-                radio_button = QRadioButton(option)
-                options.append(radio_button)
-                layout.addWidget(radio_button)
-
-            self.radio_buttons.append(options)  # Store radio buttons for the current question
-
-            # Add submit button
-            submit_button = QPushButton("Submit")
-            submit_button.clicked.connect(self.check_answer)
-            layout.addWidget(submit_button)
-
-            question_tab.setLayout(layout)
-            self.tab_widget.addTab(question_tab, f"Question {i + 1}")
+        button_layout = QVBoxLayout()
+        button_layout.addWidget(modify_button)
+        button_layout.addWidget(create_button)
+        button_widget = QWidget()
+        button_widget.setLayout(button_layout)
+        
+        self.tab_widget.addTab(button_widget, "Modify/Create")
 
         # Show the main window
         self.show()
 
-    def check_answer(self):
-        # Check the selected option against the correct answer
-        selected_option = ""
-        for option in self.radio_buttons[self.current_question_index]:
-            if option.isChecked():
-                selected_option = option.text()
-                break
-
-        correct_answer = self.questions[self.current_question_index]["correct_answer"]
-        if selected_option == correct_answer:
-            self.correct_answers += 1
-
-        self.selected_options[self.current_question_index] = selected_option
-
-        self.current_question_index += 1
-        if self.current_question_index == len(self.questions):
-            self.show_result()
-        else:
-            self.tab_widget.setCurrentIndex(self.current_question_index)
-
-    def show_result(self):
-        # Show the result with correct and incorrect answers
-        result_widget = QWidget()
+    def add_question_tab(self, index):
+        # Create a new tab for a question
+        question = self.questions[index]
+        question_tab = QWidget()
         layout = QVBoxLayout()
 
-        total_questions = len(self.questions)
-        result_label = QLabel(f"Number of correct answers: {self.correct_answers}/{total_questions}")
-        layout.addWidget(result_label)
+        # Add the question label
+        question_label = QLabel(question["question"])
+        layout.addWidget(question_label)
 
-        for i, (selected_option, question) in enumerate(zip(self.selected_options, self.questions), 1):
-            if selected_option == "":
-                result_text = f"{i}. Question, your answer is: No answer provided."
-            elif selected_option == question["correct_answer"]:
-                result_text = f"{i}. Question, your answer is: {selected_option}, CORRECT!"
+        # Add radio buttons for options
+        options = []
+        for option in question["options"]:
+            radio_button = QRadioButton(option)
+            options.append(radio_button)
+            layout.addWidget(radio_button)
+
+        self.radio_buttons.append(options)
+
+        # Add submit button
+        submit_button = QPushButton("Submit")
+        submit_button.clicked.connect(self.check_answer)
+        layout.addWidget(submit_button)
+
+        question_tab.setLayout(layout)
+        self.tab_widget.addTab(question_tab, f"Question {index + 1}")
+
+    def check_answer(self):
+        # Check which radio button is selected for the current question
+        selected_button = None
+        for button in self.radio_buttons[self.current_question_index]:
+            if button.isChecked():
+                selected_button = button
+                break
+
+        if selected_button:
+            selected_option = selected_button.text()
+            # Check if the selected option is correct
+            if selected_option == self.questions[self.current_question_index]["correct_answer"]:
+                self.correct_answers += 1
+
+            # Move to the next question
+            self.current_question_index += 1
+            if self.current_question_index < len(self.questions):
+                self.tab_widget.setCurrentIndex(self.current_question_index)
             else:
-                result_text = f"{i}. Question, your answer is: {selected_option}, WRONG! Correct answer is: {question['correct_answer']}."
+                self.show_result()
 
-            result_label = QLabel(result_text)
-            layout.addWidget(result_label)
-
-        result_widget.setLayout(layout)
+    def show_result(self):
+        # Display the final result after all questions are answered
+        result_widget = QWidget()
+        result_layout = QVBoxLayout()
+        result_label = QLabel(f"You got {self.correct_answers} out of {len(self.questions)} questions right!")
+        result_label.setObjectName("Result_Label")
+        result_layout.addWidget(result_label)
+        result_widget.setLayout(result_layout)
         self.tab_widget.addTab(result_widget, "Result")
         self.tab_widget.setCurrentWidget(result_widget)
+
+    def modify_questions(self):
+        # Open the dialog to modify existing questions
+        modify_questions(self.questions)
+
+    def create_question(self):
+        # Open the dialog to create a new question
+        create_question(self.questions, self.add_question_tab)
 
 
 def main():
