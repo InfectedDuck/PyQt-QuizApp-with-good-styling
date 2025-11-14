@@ -24,4 +24,8 @@
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License.  
+You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this software, subject to the terms of the MIT License.  
+
+For full details, see the [LICENSE](LICENSE) file.
+
